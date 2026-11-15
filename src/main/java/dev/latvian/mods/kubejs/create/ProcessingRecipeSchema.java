@@ -26,6 +26,7 @@ import dev.latvian.mods.kubejs.recipe.component.StringComponent;
 import dev.latvian.mods.kubejs.recipe.component.TimeComponent;
 import dev.latvian.mods.kubejs.recipe.schema.RecipeSchema;
 import dev.latvian.mods.kubejs.util.MapJS;
+import dev.latvian.mods.kubejs.util.FluidAmounts;
 import io.github.fabricators_of_create.porting_lib.fluids.FluidStack;
 import net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient;
 import net.minecraft.world.item.ItemStack;
@@ -80,6 +81,20 @@ public interface ProcessingRecipeSchema {
 	RecipeKey<Boolean> KEEP_HELD_ITEM = BooleanComponent.BOOLEAN.key("keepHeldItem").optional(false);
 
 	class ProcessingRecipeJS extends RecipeJS {
+		private long millibucketsToFabricUnits(long amount) {
+			// Fluid.of(id) defaults to one native bucket. Keep that shorthand intact;
+			// explicitly supplied recipe amounts use Forge-compatible millibuckets.
+			return amount == FluidAmounts.BUCKET ? amount : Math.multiplyExact(amount, FluidAmounts.MB);
+		}
+
+		private JsonObject millibucketFluidJson(JsonObject source) {
+			JsonObject copy = source.deepCopy();
+			if ((copy.has("fluid") || copy.has("fluidTag")) && copy.has("amount")) {
+				copy.addProperty("amount", millibucketsToFabricUnits(copy.get("amount").getAsLong()));
+			}
+			return copy;
+		}
+
 		@Override
 		public InputFluid readInputFluid(Object from) {
 			if (from instanceof CreateInputFluid fluid) {
@@ -87,16 +102,31 @@ public interface ProcessingRecipeSchema {
 			} else if (from instanceof FluidIngredient fluid) {
 				return new CreateInputFluid(fluid);
 			} else if (from instanceof FluidStackJS fluid) {
+				if (newRecipe) {
+					fluid = fluid.withAmount(millibucketsToFabricUnits(fluid.kjs$getAmount()));
+				}
 				return new CreateInputFluid(FluidIngredientHelper.toFluidIngredient(fluid));
 			} else if (from instanceof FluidStack fluid) {
 				return new CreateInputFluid(FluidIngredient.fromFluidStack(fluid));
 			} else {
 				var json = MapJS.json(from);
 				if (json != null) {
+					if (newRecipe) {
+						json = millibucketFluidJson(json);
+					}
 					return new CreateInputFluid(FluidIngredient.deserialize(json));
 				}
 				return CreateInputFluid.EMPTY;
 			}
+		}
+
+		@Override
+		public OutputFluid readOutputFluid(Object from) {
+			OutputFluid output = super.readOutputFluid(from);
+			if (newRecipe && output instanceof FluidStackJS fluid && !fluid.kjs$isEmpty()) {
+				return fluid.withAmount(millibucketsToFabricUnits(fluid.kjs$getAmount()));
+			}
+			return output;
 		}
 
 		@Override

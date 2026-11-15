@@ -5,8 +5,20 @@ plugins {
 
 sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = '17'
 
-def ENV = System.getenv()
-version = "${mod_version}-build.${ENV.GITHUB_RUN_NUMBER ?: '9999'}"
+def buildNumberFile = file('build-number.properties')
+def buildNumberState = new Properties()
+if (buildNumberFile.exists()) {
+	buildNumberFile.withInputStream { buildNumberState.load(it) }
+}
+def storedVersion = buildNumberState.getProperty('mod_version', '')
+def storedBuildNumber = storedVersion == mod_version ? buildNumberState.getProperty('build_number', '0').toInteger() : 0
+def requestedTaskNames = gradle.startParameter.taskNames.collect { it.tokenize(':').last() }
+def createsReleaseJar = requestedTaskNames.any { it in ['build', 'assemble', 'remapJar'] }
+def ciBuildNumber = System.getenv('GITHUB_RUN_NUMBER')
+def automaticBuildNumber = createsReleaseJar ? storedBuildNumber + 1 : Math.max(storedBuildNumber, 1)
+def resolvedBuildNumber = ciBuildNumber ?: automaticBuildNumber
+
+version = "${mod_version}-build.${resolvedBuildNumber}"
 archivesBaseName = "${project.archives_base_name}-fabric"
 group = project.maven_group
 
@@ -100,6 +112,12 @@ jar {
 remapJar {
     archiveBaseName.set "${rootProject.archives_base_name}-fabric"
     archiveClassifier.set null
+
+	doLast {
+		if (ciBuildNumber == null && createsReleaseJar) {
+			buildNumberFile.text = "mod_version=${mod_version}${System.lineSeparator()}build_number=${automaticBuildNumber}${System.lineSeparator()}"
+		}
+	}
 }
 
 publishing {
