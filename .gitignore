@@ -25,3 +25,8 @@ run
 
 # night config dependency override my beloved
 !fabric/run/config/fabric_loader_dependencies.json
+/PORTING_NOTES.md
+/README.md
+/SERVER_SCRIPTS.md
+/STARTUP_SCRIPTS.md
+/.github/workflows/
