@@ -1,0 +1,39 @@
+package dev.latvian.mods.kubejs.create.platform;
+
+import com.simibubi.create.api.behaviour.spouting.BlockSpoutingBehaviour;
+import com.simibubi.create.api.effect.OpenPipeEffectHandler;
+import com.simibubi.create.content.fluids.spout.SpoutBlockEntity;
+import com.simibubi.create.foundation.fluid.FluidIngredient;
+import dev.architectury.hooks.fluid.fabric.FluidStackHooksFabric;
+import dev.latvian.mods.kubejs.block.state.BlockStatePredicate;
+import dev.latvian.mods.kubejs.create.events.SpecialSpoutHandlerEvent;
+import dev.latvian.mods.kubejs.fluid.FluidStackJS;
+import dev.latvian.mods.kubejs.level.BlockContainerJS;
+import io.github.fabricators_of_create.porting_lib.fluids.FluidStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
+
+import java.util.function.BiConsumer;
+
+public class FluidIngredientHelper {
+	public static FluidIngredient toFluidIngredient(FluidStackJS fluidStack) {
+		return FluidIngredient.fromFluidStack(new FluidStack(FluidStackHooksFabric.toFabric(fluidStack.getFluidStack()),fluidStack.kjs$getAmount()));
+	}
+
+	public static OpenPipeEffectHandler createEffectHandler(BiConsumer<OpenPipeEffectContext, FluidStackJS> handler) {
+		return (level, area, fluid) -> handler.accept(new OpenPipeEffectContext(level, area), FluidStackJS.of(fluid));
+	}
+
+	public static BlockSpoutingBehaviour createSpoutingHandler(BlockStatePredicate block, SpecialSpoutHandlerEvent.SpoutHandler handler) {
+		return new BlockSpoutingBehaviour() {
+			@Override
+			public long fillBlock(Level world, BlockPos pos, SpoutBlockEntity spout, FluidStack availableFluid, boolean simulate) {
+				if (!block.test(world.getBlockState(pos))) {
+					return 0;
+				}
+				return handler.fillBlock(new BlockContainerJS(world, pos), FluidStackJS.of(availableFluid.writeToNBT(new CompoundTag())), simulate);
+			}
+		};
+	}
+}

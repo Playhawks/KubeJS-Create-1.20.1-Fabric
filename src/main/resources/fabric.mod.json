@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"id": "kubejs_create",
+	"version": "${version}",
+	"name": "KubeJS Create",
+	"description": "Create addon for KubeJS",
+	"authors": [
+		"LatvianModder",
+		"Blue.PHS",
+		"MaxNeedsSnacks"
+	],
+	"contact": {
+	},
+	"license": "GNU LGPLv3",
+	"icon": "assets/kubejs_create/icon.png",
+	"entrypoints": {
+		"main": [
+			"dev.latvian.mods.kubejs.create.KubeJSCreate::init"
+		]
+	},
+	"depends": {
+		"minecraft": ">=1.20.1",
+		"kubejs": ">=2001.6.5-build.26",
+		"create": "*"
+	}
+}
